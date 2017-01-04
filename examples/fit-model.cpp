@@ -215,26 +215,29 @@ int main(int argc, char *argv[])
 	}
 
 	// Fit the model, get back a mesh and the pose:
-	core::Mesh mesh;
-	fitting::RenderingParameters rendering_params;
-	std::tie(mesh, rendering_params) = fitting::fit_shape_and_pose(morphable_model, blendshapes, landmarks, landmark_mapper, image.cols, image.rows, edge_topology, ibug_contour, model_contour, 50, boost::none, 30.0f);
+	vector<LandmarkCollection<Vec2f>> landmarkss({ landmarks, landmarks });
+	vector<int> image_ws({ image.cols, image.cols });
+	vector<int> image_hs({ image.rows, image.rows });
+	vector<core::Mesh> meshs;
+	vector<fitting::RenderingParameters> rendering_paramss;
+	std::tie(meshs, rendering_paramss) = fitting::fit_shape_and_pose(morphable_model, blendshapes, landmarkss, landmark_mapper, image_ws, image_hs, edge_topology, ibug_contour, model_contour, 50, boost::none, 30.0f);
 
 	// The 3D head pose can be recovered as follows:
-	float yaw_angle = glm::degrees(glm::yaw(rendering_params.get_rotation()));
+	float yaw_angle = glm::degrees(glm::yaw(rendering_paramss[0].get_rotation()));
 	// and similarly for pitch and roll.
 
 	// Extract the texture from the image using given mesh and camera parameters:
-	Mat affine_from_ortho = fitting::get_3x4_affine_camera_matrix(rendering_params, image.cols, image.rows);
-	Mat isomap = render::extract_texture(mesh, affine_from_ortho, image);
+	Mat affine_from_ortho = fitting::get_3x4_affine_camera_matrix(rendering_paramss[0], image.cols, image.rows);
+	Mat isomap = render::extract_texture(meshs[0], affine_from_ortho, image);
 
 	// Draw the fitted mesh as wireframe, and save the image:
-	draw_wireframe(outimg, mesh, rendering_params.get_modelview(), rendering_params.get_projection(), fitting::get_opencv_viewport(image.cols, image.rows));
+	draw_wireframe(outimg, meshs[0], rendering_paramss[0].get_modelview(), rendering_paramss[0].get_projection(), fitting::get_opencv_viewport(image.cols, image.rows));
 	outputfile += fs::path(".png");
 	cv::imwrite(outputfile.string(), outimg);
 
 	// Save the mesh as textured obj:
 	outputfile.replace_extension(".obj");
-	core::write_textured_obj(mesh, outputfile.string());
+	core::write_textured_obj(meshs[0], outputfile.string());
 
 	// And save the isomap:
 	outputfile.replace_extension(".isomap.png");

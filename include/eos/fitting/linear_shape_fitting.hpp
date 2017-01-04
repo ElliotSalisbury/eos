@@ -57,34 +57,50 @@ namespace eos {
  * @param[in] model_standard_deviation The standard deviation of the 3D vertex points in the 3D model, projected to 2D (so the value is in pixels).
  * @return The estimated shape-coefficients (alphas).
  */
-inline std::vector<float> fit_shape_to_landmarks_linear(const morphablemodel::MorphableModel& morphable_model, cv::Mat affine_camera_matrix, std::vector<cv::Vec2f> landmarks, std::vector<int> vertex_ids, cv::Mat base_face=cv::Mat(), float lambda=3.0f, boost::optional<int> num_coefficients_to_fit=boost::optional<int>(), boost::optional<float> detector_standard_deviation=boost::optional<float>(), boost::optional<float> model_standard_deviation=boost::optional<float>())
+inline std::vector<float> fit_shape_to_landmarks_linear(const morphablemodel::MorphableModel& morphable_model, std::vector<cv::Mat> affine_camera_matrixs, std::vector<std::vector<cv::Vec2f>> landmarkss, std::vector<std::vector<int>> vertex_idss, std::vector<cv::Mat> base_faces=std::vector<cv::Mat>(), float lambda=3.0f, boost::optional<int> num_coefficients_to_fit=boost::optional<int>(), boost::optional<float> detector_standard_deviation=boost::optional<float>(), boost::optional<float> model_standard_deviation=boost::optional<float>())
 {
 	using cv::Mat;
-	assert(landmarks.size() == vertex_ids.size());
+	assert(landmarkss.size() > 0 && landmarkss.size() == affine_camera_matrixs.size());
+	assert(landmarkss[0].size() == vertex_idss[0].size());
 
 	int num_coeffs_to_fit = num_coefficients_to_fit.get_value_or(morphable_model.get_shape_model().get_num_principal_components());
-	int num_landmarks = static_cast<int>(landmarks.size());
+	int num_images = static_cast<int>(landmarkss.size());
+	int total_num_landmarks = 0;
+	std::vector<int> num_landmarkss;
+	std::vector<int> num_landmarks_cumulative;
+	for (int j = 0; j < num_images; ++j) {
+		num_landmarks_cumulative.push_back(total_num_landmarks);
+		num_landmarkss.push_back(landmarkss[j].size());
+		total_num_landmarks += landmarkss[j].size();
+	}
+	
 
-	if (base_face.empty())
+	if (base_faces.size() == 0)
 	{
-		base_face = morphable_model.get_shape_model().get_mean();
+		for (int j = 0; j < num_images; ++j) {
+			base_faces.push_back(morphable_model.get_shape_model().get_mean());
+		}
 	}
 
 	// $\hat{V} \in R^{3N\times m-1}$, subselect the rows of the eigenvector matrix $V$ associated with the $N$ feature points
 	// And we insert a row of zeros after every third row, resulting in matrix $\hat{V}_h \in R^{4N\times m-1}$:
-	Mat V_hat_h = Mat::zeros(4 * num_landmarks, num_coeffs_to_fit, CV_32FC1);
+	Mat V_hat_h = Mat::zeros(4 * total_num_landmarks, num_coeffs_to_fit, CV_32FC1);
 	int row_index = 0;
-	for (int i = 0; i < num_landmarks; ++i) {
-		Mat basis_rows = morphable_model.get_shape_model().get_normalised_pca_basis(vertex_ids[i]); // In the paper, the not-normalised basis might be used? I'm not sure, check it. It's even a mess in the paper. PH 26.5.2014: I think the normalised basis is fine/better.
-		//basisRows.copyTo(V_hat_h.rowRange(rowIndex, rowIndex + 3));
-		basis_rows.colRange(0, num_coeffs_to_fit).copyTo(V_hat_h.rowRange(row_index, row_index + 3));
-		row_index += 4; // replace 3 rows and skip the 4th one, it has all zeros
+	for (int j = 0; j < num_images; ++j) {
+		for (int i = 0; i < num_landmarkss[j]; ++i) {
+			Mat basis_rows = morphable_model.get_shape_model().get_normalised_pca_basis(vertex_idss[j][i]); // In the paper, the not-normalised basis might be used? I'm not sure, check it. It's even a mess in the paper. PH 26.5.2014: I think the normalised basis is fine/better.
+			//basisRows.copyTo(V_hat_h.rowRange(rowIndex, rowIndex + 3));
+			basis_rows.colRange(0, num_coeffs_to_fit).copyTo(V_hat_h.rowRange(row_index, row_index + 3));
+			row_index += 4; // replace 3 rows and skip the 4th one, it has all zeros
+		}
 	}
 	// Form a block diagonal matrix $P \in R^{3N\times 4N}$ in which the camera matrix C (P_Affine, affine_camera_matrix) is placed on the diagonal:
-	Mat P = Mat::zeros(3 * num_landmarks, 4 * num_landmarks, CV_32FC1);
-	for (int i = 0; i < num_landmarks; ++i) {
-		Mat submatrix_to_replace = P.colRange(4 * i, (4 * i) + 4).rowRange(3 * i, (3 * i) + 3);
-		affine_camera_matrix.copyTo(submatrix_to_replace);
+	Mat P = Mat::zeros(3 * total_num_landmarks, 4 * total_num_landmarks, CV_32FC1);
+	for (int j = 0; j < num_images; ++j) {
+		for (int i = 0; i < num_landmarkss[j]; ++i) {
+			Mat submatrix_to_replace = P.colRange(4*(num_landmarks_cumulative[j] + i), (4*(num_landmarks_cumulative[j] + i)) + 4).rowRange(3*(num_landmarks_cumulative[j] + i), (3*(num_landmarks_cumulative[j] + i)) + 3);
+			affine_camera_matrixs[j].copyTo(submatrix_to_replace);
+		}
 	}
 	// The variances: Add the 2D and 3D standard deviations.
 	// If the user doesn't provide them, we choose the following:
@@ -92,28 +108,32 @@ inline std::vector<float> fit_shape_to_landmarks_linear(const morphablemodel::Mo
 	// 3D (model) variance: 0.0f. It only makes sense to set it to something when we have a different variance for different vertices.
 	// The 3D variance has to be projected to 2D (for details, see paper [1]) so the units do match up.
 	float sigma_squared_2D = std::pow(detector_standard_deviation.get_value_or(std::sqrt(3.0f)), 2) + std::pow(model_standard_deviation.get_value_or(0.0f), 2);
-	Mat Omega = Mat::zeros(3 * num_landmarks, 3 * num_landmarks, CV_32FC1);
-	for (int i = 0; i < 3 * num_landmarks; ++i) {
+	Mat Omega = Mat::zeros(3 * total_num_landmarks, 3 * total_num_landmarks, CV_32FC1);
+	for (int i = 0; i < 3 * total_num_landmarks; ++i) {
 		// Sigma(i, i) = sqrt(sigma_squared_2D), but then Omega is Sigma.t() * Sigma (squares the diagonal) - so we just assign 1/sigma_squared_2D to Omega here:
 		Omega.at<float>(i, i) = 1.0f / sigma_squared_2D; // the higher the sigma_squared_2D, the smaller the diagonal entries of Sigma will be
 	}
 	// The landmarks in matrix notation (in homogeneous coordinates), $3N\times 1$
-	Mat y = Mat::ones(3 * num_landmarks, 1, CV_32FC1);
-	for (int i = 0; i < num_landmarks; ++i) {
-		y.at<float>(3 * i, 0) = landmarks[i][0];
-		y.at<float>((3 * i) + 1, 0) = landmarks[i][1];
-		//y.at<float>((3 * i) + 2, 0) = 1; // already 1, stays (homogeneous coordinate)
+	Mat y = Mat::ones(3 * total_num_landmarks, 1, CV_32FC1);
+	for (int j = 0; j < num_images; ++j) {
+		for (int i = 0; i < num_landmarkss[j]; ++i) {
+			y.at<float>(3*(num_landmarks_cumulative[j] + i), 0) = landmarkss[j][i][0];
+			y.at<float>((3*(num_landmarks_cumulative[j] + i)) + 1, 0) = landmarkss[j][i][1];
+			//y.at<float>((3 * i) + 2, 0) = 1; // already 1, stays (homogeneous coordinate)
+		}
 	}
 	// The mean, with an added homogeneous coordinate (x_1, y_1, z_1, 1, x_2, ...)^t
-	Mat v_bar = Mat::ones(4 * num_landmarks, 1, CV_32FC1);
-	for (int i = 0; i < num_landmarks; ++i) {
-		//cv::Vec4f model_mean = morphable_model.get_shape_model().get_mean_at_point(vertex_ids[i]);
-		cv::Vec4f model_mean(base_face.at<float>(vertex_ids[i] * 3), base_face.at<float>(vertex_ids[i] * 3 + 1), base_face.at<float>(vertex_ids[i] * 3 + 2), 1.0f);
-		v_bar.at<float>(4 * i, 0) = model_mean[0];
-		v_bar.at<float>((4 * i) + 1, 0) = model_mean[1];
-		v_bar.at<float>((4 * i) + 2, 0) = model_mean[2];
-		//v_bar.at<float>((4 * i) + 3, 0) = 1; // already 1, stays (homogeneous coordinate)
-		// note: now that a Vec4f is returned, we could use copyTo?
+	Mat v_bar = Mat::ones(4 * total_num_landmarks, 1, CV_32FC1);
+	for (int j = 0; j < num_images; ++j) {
+		for (int i = 0; i < num_landmarkss[j]; ++i) {
+			//cv::Vec4f model_mean = morphable_model.get_shape_model().get_mean_at_point(vertex_ids[i]);
+			cv::Vec4f model_mean(base_faces[j].at<float>(vertex_idss[j][i] * 3), base_faces[j].at<float>(vertex_idss[j][i] * 3 + 1), base_faces[j].at<float>(vertex_idss[j][i] * 3 + 2), 1.0f);
+			v_bar.at<float>(4*(num_landmarks_cumulative[j] + i), 0) = model_mean[0];
+			v_bar.at<float>((4*(num_landmarks_cumulative[j] + i)) + 1, 0) = model_mean[1];
+			v_bar.at<float>((4*(num_landmarks_cumulative[j] + i)) + 2, 0) = model_mean[2];
+			//v_bar.at<float>((4 * i) + 3, 0) = 1; // already 1, stays (homogeneous coordinate)
+			// note: now that a Vec4f is returned, we could use copyTo?
+		}
 	}
 
 	// Bring into standard regularised quadratic form with diagonal distance matrix Omega

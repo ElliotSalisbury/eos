@@ -177,20 +177,25 @@ PYBIND11_PLUGIN(eos) {
 		.def_static("load", &fitting::ModelContour::load, "Helper method to load a ModelContour from a json file from the hard drive.", py::arg("filename"))
 		;
 	
-	fitting_module.def("fit_shape_and_pose", [](const morphablemodel::MorphableModel& morphable_model, const std::vector<morphablemodel::Blendshape>& blendshapes, const std::vector<glm::vec2>& landmarks, const std::vector<std::string>& landmark_ids, const core::LandmarkMapper& landmark_mapper, int image_width, int image_height, const morphablemodel::EdgeTopology& edge_topology, const fitting::ContourLandmarks& contour_landmarks, const fitting::ModelContour& model_contour, int num_iterations, int num_shape_coefficients_to_fit, float lambda) {
-			assert(landmarks.size() == landmark_ids.size());
+	fitting_module.def("fit_shape_and_pose", [](const morphablemodel::MorphableModel& morphable_model, const std::vector<morphablemodel::Blendshape>& blendshapes, const std::vector<std::vector<glm::vec2>>& landmarkss, const std::vector<std::string>& landmark_ids, const core::LandmarkMapper& landmark_mapper, std::vector<int> image_widths, std::vector<int> image_heights, const morphablemodel::EdgeTopology& edge_topology, const fitting::ContourLandmarks& contour_landmarks, const fitting::ModelContour& model_contour, int num_iterations, int num_shape_coefficients_to_fit, float lambda) {
+			assert(landmarkss.size() > 0 && landmarkss[0].size() == landmark_ids.size());
 			std::vector<float> pca_coeffs;
-			std::vector<float> blendshape_coeffs;
+			std::vector<std::vector<float>> blendshape_coeffss;
 			std::vector<cv::Vec2f> fitted_image_points;
 			// We can change this to std::optional as soon as we switch to VS2017 and pybind supports std::optional
 			const boost::optional<int> num_shape_coefficients_opt = num_shape_coefficients_to_fit == -1 ? boost::none : boost::optional<int>(num_shape_coefficients_to_fit);
-			core::LandmarkCollection<cv::Vec2f> landmark_collection;
-			for (int i = 0; i < landmarks.size(); ++i)
-			{
-				landmark_collection.push_back(core::Landmark<cv::Vec2f>{ landmark_ids[i], cv::Vec2f(landmarks[i].x, landmarks[i].y) });
+			std::vector<core::LandmarkCollection<cv::Vec2f>> landmark_collections;
+			for (int j = 0; j < landmarkss.size(); ++j) {
+				core::LandmarkCollection<cv::Vec2f > landmark_collection;
+				for (int i = 0; i < landmarkss[j].size(); ++i)
+				{
+					landmark_collection.push_back(core::Landmark<cv::Vec2f>{ landmark_ids[i], cv::Vec2f(landmarkss[j][i].x, landmarkss[j][i].y) });
+				}
+				landmark_collections.push_back(landmark_collection);
 			}
-			auto result = fitting::fit_shape_and_pose(morphable_model, blendshapes, landmark_collection, landmark_mapper, image_width, image_height, edge_topology, contour_landmarks, model_contour, num_iterations, num_shape_coefficients_opt, lambda, boost::none, pca_coeffs, blendshape_coeffs, fitted_image_points);
-			return std::make_tuple(result.first, result.second, pca_coeffs, blendshape_coeffs);
+			
+			auto result = fitting::fit_shape_and_pose(morphable_model, blendshapes, landmark_collections, landmark_mapper, image_widths, image_heights, edge_topology, contour_landmarks, model_contour, num_iterations, num_shape_coefficients_opt, lambda, boost::none, pca_coeffs, blendshape_coeffss, fitted_image_points);
+			return std::make_tuple(result.first, result.second, pca_coeffs, blendshape_coeffss);
 		}, "Fit the pose (camera), shape model, and expression blendshapes to landmarks, in an iterative way. Returns a tuple (mesh, rendering_parameters, shape_coefficients, blendshape_coefficients).", py::arg("morphable_model"), py::arg("blendshapes"), py::arg("landmarks"), py::arg("landmark_ids"), py::arg("landmark_mapper"), py::arg("image_width"), py::arg("image_height"), py::arg("edge_topology"), py::arg("contour_landmarks"), py::arg("model_contour"), py::arg("num_iterations") = 5, py::arg("num_shape_coefficients_to_fit") = -1, py::arg("lambda") = 30.0f)
 		;
 

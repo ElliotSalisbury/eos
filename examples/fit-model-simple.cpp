@@ -197,7 +197,18 @@ int main(int argc, char *argv[])
 
 	// Estimate the shape coefficients by fitting the shape to the landmarks:
 	Mat affine_from_ortho = fitting::get_3x4_affine_camera_matrix(rendering_params, image.cols, image.rows);
-	vector<float> fitted_coeffs = fitting::fit_shape_to_landmarks_linear(morphable_model, affine_from_ortho, image_points, vertex_indices);
+	
+	vector<Mat> cameras;
+	cameras.push_back(affine_from_ortho);
+	//cameras.push_back(affine_from_ortho);
+	vector<vector<Vec2f>> landmarkss;
+	landmarkss.push_back(image_points);
+	//landmarkss.push_back(image_points);
+	vector<vector<int>> vertex_indicess;
+	vertex_indicess.push_back(vertex_indices);
+	//vertex_indicess.push_back(vertex_indices);
+	
+	vector<float> fitted_coeffs = fitting::fit_shape_to_landmarks_linear(morphable_model, cameras, landmarkss, vertex_indicess);
 
 	// Obtain the full mesh with the estimated coefficients:
 	core::Mesh mesh = morphable_model.draw_sample(fitted_coeffs, vector<float>());
