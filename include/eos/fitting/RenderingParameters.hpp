@@ -111,6 +111,9 @@ public:
 	// Creates with default frustum...
 	RenderingParameters() {};
 
+	//create from all the private members
+	RenderingParameters(CameraType camera_type, Frustum camera_frustum, glm::quat rotation, float t_x, float t_y, int screen_width, int screen_height) : camera_type(camera_type), frustum(camera_frustum), rotation(rotation), t_x(t_x), t_y(t_y), screen_width(screen_width), screen_height(screen_height) {};
+
 	// Initialisation for Eigen::LevMarq
 	// This creates the correct rotation quaternion in the case the angles were estimated/given by R*P*Y*v.
 	// Angles given in radian.
@@ -162,6 +165,14 @@ public:
 	Frustum get_frustum() const {
 		return frustum;
 	};
+
+	float get_t_x() const {
+		return t_x;
+	}
+
+	float get_t_y() const {
+		return t_y;
+	}
 
 	int get_screen_width() const {
 		return screen_width;

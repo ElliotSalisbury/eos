@@ -72,7 +72,23 @@ PYBIND11_PLUGIN(eos) {
 		.def_readwrite("colors", &core::Mesh::colors, "Colour data")
 		.def_readwrite("tci", &core::Mesh::tci, "Triangle colour indices (usually the same as tvi)")
 		.def_readwrite("texcoords", &core::Mesh::texcoords, "Texture coordinates")
-		;
+		.def("__getstate__", [](const core::Mesh &p) {
+			/* Return a tuple that fully encodes the state of the object */
+			return py::make_tuple(p.vertices, p.colors, p.texcoords, p.tvi, p.tci);
+		})
+		.def("__setstate__", [](core::Mesh &p, py::tuple t) {
+			if (t.size() != 5)
+				throw std::runtime_error("Invalid state!");
+			/* Invoke the in-place constructor. Note that this is needed even
+			when the object just has a trivial default constructor */
+			new (&p) core::Mesh();
+			p.vertices = t[0].cast<std::vector<glm::vec4>>();
+			p.colors = t[1].cast<std::vector<glm::vec3>>();
+			p.texcoords = t[2].cast<std::vector<glm::vec2>>();
+
+			p.tvi = t[3].cast<std::vector<std::array<int, 3>>>();
+			p.tci = t[4].cast<std::vector<std::array<int, 3>>>();
+		});
 
 	/**
 	 * Bindings for the eos::morphablemodel namespace:
@@ -161,6 +177,40 @@ PYBIND11_PLUGIN(eos) {
 		.def("get_rotation_euler_angles", [](const fitting::RenderingParameters& p) { return glm::eulerAngles(p.get_rotation()); }, "Returns the rotation's Euler angles (in radians) as [pitch, yaw, roll].")
 		.def("get_modelview", &fitting::RenderingParameters::get_modelview, "Returns the 4x4 model-view matrix.")
 		.def("get_projection", &fitting::RenderingParameters::get_projection, "Returns the 4x4 projection matrix.")
+		.def("__getstate__", [](const fitting::RenderingParameters &p) {
+			/* Return a tuple that fully encodes the state of the object */			
+			int cameraType = 0;
+			if (p.get_camera_type() == fitting::CameraType::Perspective) {
+				cameraType = 1;
+			}
+
+			fitting::Frustum frustum = p.get_frustum();
+			pybind11::tuple frustumTuple = py::make_tuple(frustum.l, frustum.r, frustum.b, frustum.t);
+
+			glm::quat rotation = p.get_rotation();
+			pybind11::tuple rotationTuple = py::make_tuple(rotation.x, rotation.y, rotation.z, rotation.w);
+
+			return py::make_tuple(cameraType, frustumTuple, rotationTuple, p.get_t_x(), p.get_t_y(), p.get_screen_width(), p.get_screen_height());
+		})
+			.def("__setstate__", [](fitting::RenderingParameters &p, py::tuple t) {
+			if (t.size() != 7)
+				throw std::runtime_error("Invalid state!");
+			/* Invoke the in-place constructor. Note that this is needed even
+			when the object just has a trivial default constructor */
+
+			fitting::CameraType cameraType = fitting::CameraType::Orthographic;
+			if (t[0].cast<int>() == 1) {
+				cameraType = fitting::CameraType::Perspective;
+			}
+
+			pybind11::tuple frustumTuple = t[1];
+			fitting::Frustum frustum(frustumTuple[0].cast<float>(), frustumTuple[1].cast<float>(), frustumTuple[2].cast<float>(), frustumTuple[3].cast<float>());
+
+			pybind11::tuple rotationTuple = t[2];
+			glm::quat rotation(rotationTuple[0].cast<float>(), rotationTuple[1].cast<float>(), rotationTuple[2].cast<float>(), rotationTuple[3].cast<float>());
+
+			new (&p) fitting::RenderingParameters(cameraType, frustum, rotation, t[3].cast<float>(), t[4].cast<float>(), t[5].cast<int>(), t[6].cast<int>());
+		});
 		;
 
 	fitting_module.def("estimate_orthographic_projection_linear", [](std::vector<cv::Vec2f> image_points, std::vector<cv::Vec4f> model_points, bool is_viewport_upsidedown, int viewport_height) {
