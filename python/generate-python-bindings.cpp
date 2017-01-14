@@ -203,11 +203,11 @@ PYBIND11_PLUGIN(eos) {
 				cameraType = fitting::CameraType::Perspective;
 			}
 
-			pybind11::tuple frustumTuple = t[1];
+			pybind11::tuple frustumTuple = t[1].cast<pybind11::tuple>();
 			fitting::Frustum frustum(frustumTuple[0].cast<float>(), frustumTuple[1].cast<float>(), frustumTuple[2].cast<float>(), frustumTuple[3].cast<float>());
 
-			pybind11::tuple rotationTuple = t[2];
-			glm::quat rotation(rotationTuple[0].cast<float>(), rotationTuple[1].cast<float>(), rotationTuple[2].cast<float>(), rotationTuple[3].cast<float>());
+			pybind11::tuple rotationTuple = t[2].cast<pybind11::tuple>();
+			glm::quat rotation(rotationTuple[3].cast<float>(), rotationTuple[0].cast<float>(), rotationTuple[1].cast<float>(), rotationTuple[2].cast<float>());
 
 			new (&p) fitting::RenderingParameters(cameraType, frustum, rotation, t[3].cast<float>(), t[4].cast<float>(), t[5].cast<int>(), t[6].cast<int>());
 		});
