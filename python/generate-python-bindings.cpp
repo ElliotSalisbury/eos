@@ -63,7 +63,9 @@ PYBIND11_PLUGIN(eos) {
 		.def("__init__", [](core::LandmarkMapper& instance, std::string filename) { // wrap the fs::path c'tor with std::string
 				new (&instance) core::LandmarkMapper(filename);
 			}, "Constructs a new landmark mapper from a file containing mappings from one set of landmark identifiers to another.", py::arg("filename"))
-		// We can't expose the convert member function yet - need std::optional (or some trick with self/this and a lambda)
+		.def("convert", [](const core::LandmarkMapper& instance, std::string landmarkname) {
+				return instance.convert(landmarkname).get_value_or("");
+			}, "Converts the given landmark name to the mapped name")
 		;
 
 	py::class_<core::Mesh>(core_module, "Mesh", "This class represents a 3D mesh consisting of vertices, vertex colour information and texture coordinates.")
