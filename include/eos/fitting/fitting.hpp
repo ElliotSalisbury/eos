@@ -380,8 +380,10 @@ inline std::pair<std::vector<core::Mesh>, std::vector<fitting::RenderingParamete
 			}
 
 			// Re-estimate the pose, using all correspondences:
-			fitting::ScaledOrthoProjectionParameters current_pose = fitting::estimate_orthographic_projection_linear(image_points_w_contour[j], model_pointss[j], true, image_heights[j]);
-			rendering_paramss[j] = fitting::RenderingParameters(current_pose, image_widths[j], image_heights[j]);
+			if (i % 3 == 0) {
+				fitting::ScaledOrthoProjectionParameters current_pose = fitting::estimate_orthographic_projection_linear(image_points_w_contour[j], model_pointss[j], true, image_heights[j]);
+				rendering_paramss[j] = fitting::RenderingParameters(current_pose, image_widths[j], image_heights[j]);
+			}
 
 			Mat affine_from_ortho = fitting::get_3x4_affine_camera_matrix(rendering_paramss[j], image_widths[j], image_heights[j]);
 			affine_from_orthos.push_back(affine_from_ortho);
