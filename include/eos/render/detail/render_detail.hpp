@@ -3,7 +3,7 @@
  *
  * File: include/eos/render/detail/render_detail.hpp
  *
- * Copyright 2014, 2015 Patrik Huber
+ * Copyright 2014-2017 Patrik Huber
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,8 +23,9 @@
 #define RENDER_DETAIL_HPP_
 
 #include "eos/render/utils.hpp"
+#include "eos/render/detail/Vertex.hpp"
 
-#include "glm/glm.hpp" // tvec2, glm::precision, tvec3, normalize, dot, cross
+#include "glm/glm.hpp" // tvec2, glm::precision, tvec3, tvec4, normalize, dot, cross
 
 #include "opencv2/core/core.hpp"
 
@@ -37,23 +38,6 @@
 namespace eos {
 	namespace render {
 		namespace detail {
-
-/**
- * Just a representation for a vertex during rendering.
- *
- * Might consider getting rid of it.
- * Used in render_affine and render.
- */
-class Vertex
-{
-public:
-	Vertex() {};
-	Vertex(const glm::tvec4<float>& position, const glm::tvec3<float>& color, const glm::tvec2<float>& texcoords) : position(position), color(color), texcoords(texcoords) {};
-
-	glm::tvec4<float> position;
-	glm::tvec3<float> color; ///< in RGB order
-	glm::tvec2<float> texcoords;
-};
 
 class plane
 {
@@ -144,7 +128,7 @@ public:
  */
 struct TriangleToRasterize
 {
-	Vertex v0, v1, v2;
+	Vertex<float> v0, v1, v2;
 	int min_x;
 	int max_x;
 	int min_y;
@@ -231,9 +215,9 @@ double implicit_line(float x, float y, const glm::tvec4<T, P>& v1, const glm::tv
 	return ((double)v1[1] - (double)v2[1])*(double)x + ((double)v2[0] - (double)v1[0])*(double)y + (double)v1[0] * (double)v2[1] - (double)v2[0] * (double)v1[1];
 };
 
-inline std::vector<Vertex> clip_polygon_to_plane_in_4d(const std::vector<Vertex>& vertices, const glm::tvec4<float>& plane_normal)
+inline std::vector<Vertex<float>> clip_polygon_to_plane_in_4d(const std::vector<Vertex<float>>& vertices, const glm::tvec4<float>& plane_normal)
 {
-	std::vector<Vertex> clippedVertices;
+	std::vector<Vertex<float>> clippedVertices;
 
 	// We can have 2 cases:
 	//	* 1 vertex visible: we make 1 new triangle out of the visible vertex plus the 2 intersection points with the near-plane
@@ -262,11 +246,11 @@ inline std::vector<Vertex> clip_polygon_to_plane_in_4d(const std::vector<Vertex>
 			if (fa < 0) // we keep the original vertex plus the new one
 			{
 				clippedVertices.push_back(vertices[a]);
-				clippedVertices.push_back(Vertex(position, color, texCoord));
+				clippedVertices.push_back(Vertex<float>{position, color, texCoord});
 			}
 			else if (fb < 0) // we use only the new vertex
 			{
-				clippedVertices.push_back(Vertex(position, color, texCoord));
+				clippedVertices.push_back(Vertex<float>{position, color, texCoord});
 			}
 		}
 		else if (fa < 0 && fb < 0) // both are visible (on the "good" side of the plane), no splitting required, use the current vertex
@@ -277,6 +261,27 @@ inline std::vector<Vertex> clip_polygon_to_plane_in_4d(const std::vector<Vertex>
 	}
 
 	return clippedVertices;
+};
+
+/**
+ * @brief Todo.
+ *
+ * Takes in clip coords? and outputs NDC.
+ * divides by w and outputs [x_ndc, y_ndc, z_ndc, 1/w_clip].
+ * The w-component is set to 1/w_clip (which is what OpenGL passes to the FragmentShader).
+ *
+ * @param[in] vertex X.
+ * @ return X.
+ */
+template <typename T, glm::precision P = glm::defaultp>
+glm::tvec4<T, P> divide_by_w(const glm::tvec4<T, P>& vertex)
+{
+    auto one_over_w = 1.0 / vertex.w;
+    // divide by w: (if ortho, w will just be 1)
+    glm::tvec4<T, P> v_ndc(vertex / vertex.w);
+    // Set the w coord to 1/w (i.e. 1/w_clip). This is what OpenGL passes to the FragmentShader.
+    v_ndc.w = one_over_w;
+    return v_ndc;
 };
 
 // used only in tex2D_linear_mipmap_linear
@@ -387,7 +392,7 @@ inline cv::Vec3f tex2d_linear(const cv::Vec2f& imageTexCoord, unsigned char mipm
 // Todo: Split this function into the general (core-part) and the texturing part.
 // Then, utils::extractTexture can re-use the core-part.
 // Note: Maybe a bit outdated "todo" above.
-inline boost::optional<TriangleToRasterize> process_prospective_tri(Vertex v0, Vertex v1, Vertex v2, int viewport_width, int viewport_height, bool enable_backface_culling)
+inline boost::optional<TriangleToRasterize> process_prospective_tri(Vertex<float> v0, Vertex<float> v1, Vertex<float> v2, int viewport_width, int viewport_height, bool enable_backface_culling)
 {
 	using cv::Vec2f;
 	using cv::Vec3f;

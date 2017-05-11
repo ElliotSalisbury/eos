@@ -15,7 +15,7 @@ function [mesh, rendering_parameters] = fit_shape_and_pose(morphable_model, ...
 %   landmarks must be a 68 x 2 matrix with ibug landmarks, in the order
 %   from 1 to 68.
 %
-%   Default values for some of the parameters:: num_iterations = 5,
+%   Default values for some of the parameters: num_iterations = 5,
 %   num_shape_coefficients_to_fit = all (-1), and lambda = 30.0.
 %
 %   Please see the C++ documentation for the description of the parameters:
@@ -26,10 +26,14 @@ function [mesh, rendering_parameters] = fit_shape_and_pose(morphable_model, ...
 %   contour_landmarks and model_contour as *filenames* to the respective
 %   files in the eos/share/ directory, and not the objects directly.
 
+if(~isa(landmarks,'double'))
+    error('Please specify the landmarks as type double.');
+end
+
 % We'll use default values to the following arguments, if they're not
 % provided:
 if (~exist('edge_topology', 'var')), edge_topology = '../share/sfm_3448_edge_topology.json'; end
-if (~exist('contour_landmarks', 'var')), contour_landmarks = '../share/ibug2did.txt'; end
+if (~exist('contour_landmarks', 'var')), contour_landmarks = '../share/ibug_to_sfm.txt'; end
 if (~exist('model_contour', 'var')), model_contour = '../share/model_contours.json'; end
 if (~exist('num_iterations', 'var')), num_iterations = 5; end
 if (~exist('num_shape_coefficients_to_fit', 'var')), num_shape_coefficients_to_fit = -1; end

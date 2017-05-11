@@ -1,6 +1,3 @@
-cmake_minimum_required(VERSION 3.1.3)
-project(python-bindings)
-
 # The python bindings may need a few additional dependencies (e.g. boost filesystem and OpenCV), which are
 # included below - at some point it should be checked if they are really needed.
 
@@ -29,4 +26,4 @@ target_link_libraries(python-bindings PRIVATE eos ${OpenCV_LIBS} ${Boost_LIBRARI
 set_target_properties(python-bindings PROPERTIES OUTPUT_NAME eos)
 
 install(TARGETS python-bindings DESTINATION python)
-install(FILES ${CMAKE_SOURCE_DIR}/python/demo.py DESTINATION python)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/demo.py DESTINATION python)

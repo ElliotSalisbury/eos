@@ -1,6 +1,3 @@
-cmake_minimum_required(VERSION 3.1.3)
-project(utils)
-
 # The utils need a few additional dependencies (e.g. boost filesystem and OpenCV highgui):
 
 #check installed version in order to include the correct OpenCV libraries
@@ -35,12 +32,7 @@ target_link_libraries(bfm-binary-to-cereal eos ${OpenCV_LIBS} ${Boost_LIBRARIES}
 add_executable(edgestruct-csv-to-json edgestruct-csv-to-json.cpp)
 target_link_libraries(edgestruct-csv-to-json eos ${Boost_LIBRARIES})
 
-# Store a json file as cereal .bin:
-add_executable(json-to-cereal-binary json-to-cereal-binary.cpp)
-target_link_libraries(json-to-cereal-binary eos ${OpenCV_LIBS} ${Boost_LIBRARIES})
-
-# install target:
+# Install targets:
 install(TARGETS scm-to-cereal DESTINATION bin)
 install(TARGETS bfm-binary-to-cereal DESTINATION bin)
-install(TARGETS json-to-cereal-binary DESTINATION bin)
 install(TARGETS edgestruct-csv-to-json DESTINATION bin)

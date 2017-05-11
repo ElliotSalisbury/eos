@@ -13,7 +13,7 @@ eos is a lightweight 3D Morphable Face Model fitting library that provides basic
 
 At the moment, it mainly provides the following functionality:
 
-* MorphableModel class to represent a 3DMM (using OpenCVs `cv::Mat`)
+* MorphableModel and PcaModel classes to represent 3DMMs, with basic operations like `draw_sample()`
 * Our low-resolution, shape-only 3D Morphable Face Model ([share/sfm_shape_3448.bin](https://github.com/patrikhuber/eos/blob/master/share/sfm_shape_3448.bin))
 * Fast, linear pose, shape and expression fitting, edge and contour fitting:
  * Linear scaled orthographic projection camera pose estimation
@@ -21,8 +21,8 @@ At the moment, it mainly provides the following functionality:
  * Expression fitting, and 6 linear expression blendshapes: anger, disgust, fear, happiness, sadness, surprise
  * Edge-fitting, heavily inspired by: A. Bas et al., _Fitting a 3D Morphable Model to Edges: A Comparison Between Hard and Soft Correspondences_, ACCVW 2016
 * Isomap texture extraction to obtain a pose-invariant representation of the face texture
+* (**New**): Python bindings for parts of the library, and Matlab bindings for the fitting
 * (_Experimental_): Non-linear fitting cost functions using Ceres for shape, camera, blendshapes and the colour model (needs Ceres to be installed separately)
-* (_**New**, experimental_): Python bindings for parts of the library, and Matlab bindings for the fitting
 
 ## Usage
 
@@ -32,16 +32,17 @@ At the moment, it mainly provides the following functionality:
 To use the library in your own project, just add the following directories to your include path:
 
 * `eos/include`
-* `eos/3rdparty/cereal-1.1.1/include`
+* `eos/3rdparty/cereal/include`
 * `eos/3rdparty/glm`
 * `eos/3rdparty/nanoflann/include`
+* `eos/3rdparty/eigen/Eigen`
 * `eos/3rdparty/eigen3-nnls/src`
 
 **Make sure to clone with `--recursive` to download the required submodules!**
 
 ### Build the examples and tests
 
-* Needed dependencies for the example app: CMake (>=2.8.10), Boost system, filesystem, program_options (>=1.50.0), OpenCV core, imgproc, highgui (>=2.4.3).
+* Needed dependencies for the example app: CMake (>=3.1.3), Boost system, filesystem, program_options (>=1.50.0), OpenCV core, imgproc, highgui (>=2.4.3).
 
 To build:
 
@@ -84,9 +85,10 @@ The full model is available at [http://www.cvssp.org/facemodel](http://www.cvssp
 
 ## Python bindings
 
-_Experimental_: eos includes python bindings for some of its functionality (and more can be added!). Set `-DEOS_GENERATE_PYTHON_BINDINGS=on` when running `cmake` to build them (and optionally set `PYTHON_EXECUTABLE` to point to your python interpreter if it's not found automatically).
+eos includes python bindings for some of its functionality (and more can be added!). An experimental package is on PyPI: Try `pip install eos-py`. You will still need the data files from this repository.
+In case of issues, build the bindings manually: Clone the repository and set `-DEOS_GENERATE_PYTHON_BINDINGS=on` when running `cmake` (and optionally set `PYTHON_EXECUTABLE` to point to your python interpreter if it's not found automatically).
 
-After building the bindings, they can be used like any python module:
+After having obtained the bindings, they can be used like any python module:
 
 ```
 import eos

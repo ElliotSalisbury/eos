@@ -5,7 +5,7 @@
 
 /**
  * @namespace eos::core
- * @brief Essential functions and classes to work with 3D face models and landmarks.
+ * @brief Essential functions and classes to work with 3D face models, meshes and landmarks.
  */
 
 /**
@@ -20,5 +20,10 @@
 
 /**
  * @namespace eos::render
- * @brief 3D mesh and texture extraction functionality.
+ * @brief Software rendering and texture extraction functionality.
+ */
+
+ /**
+ * @namespace eos::video
+ * @brief Video keyframe extraction and fusion.
  */

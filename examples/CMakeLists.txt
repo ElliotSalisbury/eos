@@ -1,6 +1,3 @@
-cmake_minimum_required(VERSION 3.1.3)
-project(examples)
-
 # The examples need a few additional dependencies (e.g. boost filesystem and OpenCV highgui):
 
 #check installed version in order to include the correct OpenCV libraries
@@ -33,6 +30,16 @@ add_executable(fit-model fit-model.cpp)
 target_link_libraries(fit-model eos ${OpenCV_LIBS} ${Boost_LIBRARIES})
 target_link_libraries(fit-model "$<$<CXX_COMPILER_ID:GNU>:-pthread>$<$<CXX_COMPILER_ID:Clang>:-pthreads>")
 
+# Generate random samples from the model:
+add_executable(generate-obj generate-obj.cpp)
+target_link_libraries(generate-obj eos ${OpenCV_LIBS} ${Boost_LIBRARIES})
+
+# Install these targets:
+install(TARGETS fit-model-simple DESTINATION bin)
+install(TARGETS fit-model DESTINATION bin)
+install(TARGETS generate-obj DESTINATION bin)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/data DESTINATION bin)
+
 
 if(EOS_BUILD_CERES_EXAMPLE)
   # Find Ceres, for the fit-model-ceres app:
@@ -45,14 +52,3 @@ if(EOS_BUILD_CERES_EXAMPLE)
   target_link_libraries(fit-model-ceres eos ${CERES_LIBRARIES} ${OpenCV_LIBS} ${Boost_LIBRARIES})
   install(TARGETS fit-model-ceres DESTINATION bin)
 endif()
-
-# Generate random samples from the model:
-add_executable(generate-obj generate-obj.cpp)
-target_link_libraries(generate-obj eos ${OpenCV_LIBS} ${Boost_LIBRARIES})
-
-
-# install target:
-install(TARGETS fit-model-simple DESTINATION bin)
-install(TARGETS fit-model DESTINATION bin)
-install(TARGETS generate-obj DESTINATION bin)
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/examples/data DESTINATION bin)

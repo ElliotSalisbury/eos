@@ -137,15 +137,15 @@ int main(int argc, char *argv[])
 		desc.add_options()
 			("help,h",
 				"display the help message")
-			("model,m", po::value<fs::path>(&modelfile)->required()->default_value("../share/sfm_shape_3448.bin"),
-				"a Morphable Model stored as cereal BinaryArchive")
+			("model,m", po::value<fs::path>(&modelfile)->required()->default_value("../share/sfm_3448.bin"),
+				"a Morphable Model, containing a shape and albedo model, stored as cereal BinaryArchive")
 			("blendshapes,b", po::value<fs::path>(&blendshapesfile)->required()->default_value("../share/expression_blendshapes_3448.bin"),
 				"file with blendshapes")
 			("image,i", po::value<fs::path>(&imagefile)->required()->default_value("data/image_0010.png"),
 				"an input image")
 			("landmarks,l", po::value<fs::path>(&landmarksfile)->required()->default_value("data/image_0010.pts"),
 				"2D landmarks for the image, in ibug .pts format")
-			("mapping,p", po::value<fs::path>(&mappingsfile)->required()->default_value("../share/ibug2did.txt"),
+			("mapping,p", po::value<fs::path>(&mappingsfile)->required()->default_value("../share/ibug_to_sfm.txt"),
 				"landmark identifier to model vertex number mapping")
 			("model-contour,c", po::value<fs::path>(&contourfile)->required()->default_value("../share/model_contours.json"),
 				"file with model contour indices")
@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
 	catch (const po::error& e) {
 		cout << "Error while parsing command-line arguments: " << e.what() << endl;
 		cout << "Use --help to display a list of options." << endl;
-		return EXIT_SUCCESS;
+		return EXIT_FAILURE;
 	}
 
 	google::InitGoogleLogging(argv[0]); // Ceres logging initialisation
@@ -223,7 +223,6 @@ int main(int argc, char *argv[])
 			continue;
 		}
 		int vertex_idx = std::stoi(converted_name.get());
-		Vec4f vertex = morphable_model.get_shape_model().get_mean_at_point(vertex_idx);
 		vertex_indices.emplace_back(vertex_idx);
 		image_points.emplace_back(landmarks[i].coordinates);
 	}
@@ -378,7 +377,12 @@ int main(int argc, char *argv[])
 	QuaternionParameterization* full_fit_quaternion_parameterisation = new QuaternionParameterization;
 	fitting_costfunction.SetParameterization(&camera_rotation[0], full_fit_quaternion_parameterisation);
 
-	// Colour model fitting:
+	// Colour model fitting (this needs a Morphable Model with colour (albedo) model, see note above main()):
+	if (!morphable_model.has_color_model())
+	{
+		cout << "Error: The MorphableModel used does not contain a colour (albedo) model. ImageCost requires a model that contains a colour PCA model. You may want to use the full Surrey Face Model or remove this section.";
+		return EXIT_FAILURE;
+	}
 	std::vector<double> colour_coefficients;
 	colour_coefficients.resize(10);
 	// Add a residual for each vertex:
@@ -420,7 +424,8 @@ int main(int argc, char *argv[])
 	auto vectord_to_vectorf = [](const std::vector<double>& vec) {
 		return std::vector<float>(std::begin(vec), std::end(vec));
 	};
-	auto shape_ceres = morphable_model.get_shape_model().draw_sample(shape_coefficients) + to_matrix(blendshapes) * Mat(vectord_to_vectorf(blendshape_coefficients), true);
+	auto blendshape_coeffs_float = vectord_to_vectorf(blendshape_coefficients);
+	Eigen::VectorXf shape_ceres = morphable_model.get_shape_model().draw_sample(shape_coefficients) + to_matrix(blendshapes) * Eigen::Map<const Eigen::VectorXf>(blendshape_coeffs_float.data(), blendshape_coeffs_float.size());
 	core::Mesh mesh = morphablemodel::sample_to_mesh(shape_ceres, morphable_model.get_color_model().draw_sample(colour_coefficients), morphable_model.get_shape_model().get_triangle_list(), morphable_model.get_color_model().get_triangle_list(), morphable_model.get_texture_coordinates());
 	for (auto&& idx : vertex_indices)
 	{

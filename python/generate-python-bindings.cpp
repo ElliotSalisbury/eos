@@ -33,7 +33,7 @@
 
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
-//#include "pybind11/eigen.h"
+#include "pybind11/eigen.h"
 #include "pybind11_glm.hpp"
 #include "pybind11_opencv.hpp"
 
@@ -56,6 +56,7 @@ PYBIND11_PLUGIN(eos) {
 	 * Bindings for the eos::core namespace:
 	 *  - LandmarkMapper
 	 *  - Mesh
+	 *  - write_obj()
 	 */
 	py::module core_module = eos_module.def_submodule("core", "Essential functions and classes to work with 3D face models and landmarks.");
 	py::class_<core::LandmarkMapper>(core_module, "LandmarkMapper", "Represents a mapping from one kind of landmarks to a different format(e.g.model vertices).")
@@ -92,29 +93,45 @@ PYBIND11_PLUGIN(eos) {
 			p.tci = t[4].cast<std::vector<std::array<int, 3>>>();
 		});
 
+	core_module.def("write_obj", &core::write_obj, "Writes the given Mesh to an obj file.", py::arg("mesh"), py::arg("filename"));
+
 	/**
 	 * Bindings for the eos::morphablemodel namespace:
 	 *  - PcaModel
 	 *  - MorphableModel
-	 *  - load_model()
+	 *  - load_model(), save_model()
+	 *  - load_pca_model(), save_pca_model()
 	 */
 	py::module morphablemodel_module = eos_module.def_submodule("morphablemodel", "Functionality to represent a Morphable Model, its PCA models, and functions to load models and blendshapes.");
 
 	py::class_<morphablemodel::PcaModel>(morphablemodel_module, "PcaModel", "Class representing a PcaModel with a mean, eigenvectors and eigenvalues, as well as a list of triangles to build a mesh.")
+		.def(py::init<>(), "Creates an empty model.")
+		.def(py::init<Eigen::VectorXf, Eigen::MatrixXf, Eigen::VectorXf, std::vector<std::array<int, 3>>>(), "Construct a PCA model from given mean, orthonormal PCA basis, eigenvalues and triangle list.", py::arg("mean"), py::arg("orthonormal_pca_basis"), py::arg("eigenvalues"), py::arg("triangle_list"))
 		.def("get_num_principal_components", &morphablemodel::PcaModel::get_num_principal_components, "Returns the number of principal components in the model.")
 		.def("get_data_dimension", &morphablemodel::PcaModel::get_data_dimension, "Returns the dimension of the data, i.e. the number of shape dimensions.")
 		.def("get_triangle_list", &morphablemodel::PcaModel::get_triangle_list, "Returns a list of triangles on how to assemble the vertices into a mesh.")
 		.def("get_mean", &morphablemodel::PcaModel::get_mean, "Returns the mean of the model.")
 		.def("get_mean_at_point", &morphablemodel::PcaModel::get_mean_at_point, "Return the value of the mean at a given vertex index.", py::arg("vertex_index"))
-		.def("draw_sample", (cv::Mat (morphablemodel::PcaModel::*)(std::vector<float>) const)&morphablemodel::PcaModel::draw_sample, "Returns a sample from the model with the given PCA coefficients. The given coefficients should follow a standard normal distribution, i.e. not be scaled with their eigenvalues/variances.", py::arg("coefficients"))
+		.def("get_orthonormal_pca_basis", [](const morphablemodel::PcaModel& m) { return m.get_orthonormal_pca_basis(); }, "Returns the orthonormal PCA basis matrix, i.e. the eigenvectors. Each column of the matrix is an eigenvector.") // use py::overload in VS2017
+		.def("get_rescaled_pca_basis", [](const morphablemodel::PcaModel& m) { return m.get_rescaled_pca_basis(); }, "Returns the rescaled PCA basis matrix, i.e. the eigenvectors. Each column of the matrix is an eigenvector, and each eigenvector has been rescaled by multiplying it with the square root of its eigenvalue.") // use py::overload in VS2017
+		.def("get_eigenvalues", &morphablemodel::PcaModel::get_eigenvalues, "Returns the models eigenvalues.")
+		.def("draw_sample", (Eigen::VectorXf(morphablemodel::PcaModel::*)(std::vector<float>) const)&morphablemodel::PcaModel::draw_sample, "Returns a sample from the model with the given PCA coefficients. The given coefficients should follow a standard normal distribution, i.e. not be scaled with their eigenvalues/variances.", py::arg("coefficients"))
 		;
 
 	py::class_<morphablemodel::MorphableModel>(morphablemodel_module, "MorphableModel", "A class representing a 3D Morphable Model, consisting of a shape- and colour (albedo) PCA model, as well as texture (uv) coordinates.")
+		.def(py::init<morphablemodel::PcaModel, morphablemodel::PcaModel, std::vector<std::array<double, 2>>>(), "Create a Morphable Model from a shape and a colour PCA model, and optional texture coordinates.", py::arg("shape_model"), py::arg("color_model"), py::arg("texture_coordinates") = std::vector<std::array<double, 2>>())
 		.def("get_shape_model", [](const morphablemodel::MorphableModel& m) { return m.get_shape_model(); }, "Returns the PCA shape model of this Morphable Model.") // Not sure if that'll really be const in Python? I think Python does a copy each time this gets called?
-		.def("get_color_model", [](const morphablemodel::MorphableModel& m) { return m.get_color_model(); }, "Returns the PCA colour (albedo) model of this Morphable Model.")
+		.def("get_color_model", [](const morphablemodel::MorphableModel& m) { return m.get_color_model(); }, "Returns the PCA colour (albedo) model of this Morphable Model.") // (continued from above:) We may want to use py::overload, but in any case, we need to tell pybind11 if it should use the const or non-const overload.
+		.def("get_mean", &morphablemodel::MorphableModel::get_mean, "Returns the mean of the shape- and colour model as a Mesh.")
+		.def("draw_sample", (core::Mesh(morphablemodel::MorphableModel::*)(std::vector<float>, std::vector<float>) const)&morphablemodel::MorphableModel::draw_sample, "Returns a sample from the model with the given shape- and colour PCA coefficients.", py::arg("shape_coefficients"), py::arg("color_coefficients"))
+		.def("has_color_model", &morphablemodel::MorphableModel::has_color_model, "Returns true if this Morphable Model contains a colour model, and false if it is a shape-only model.")
+		.def("get_texture_coordinates", &morphablemodel::MorphableModel::get_texture_coordinates, "Returns the texture coordinates for all the vertices in the model.")
 		;
 
 	morphablemodel_module.def("load_model", &morphablemodel::load_model, "Load a Morphable Model from a cereal::BinaryInputArchive (.bin) from the harddisk.", py::arg("filename"));
+	morphablemodel_module.def("save_model", &morphablemodel::save_model, "Save a Morphable Model as cereal::BinaryOutputArchive.", py::arg("model"), py::arg("filename"));
+	morphablemodel_module.def("load_pca_model", &morphablemodel::load_pca_model, "Load a PCA model from a cereal::BinaryInputArchive (.bin) from the harddisk.", py::arg("filename"));
+	morphablemodel_module.def("save_pca_model", &morphablemodel::save_pca_model, "Save a PCA model as cereal::BinaryOutputArchive.", py::arg("model"), py::arg("filename"));
 
 	/**
 	 *  - Blendshape
@@ -129,21 +146,20 @@ PYBIND11_PLUGIN(eos) {
 	morphablemodel_module.def("load_blendshapes", &morphablemodel::load_blendshapes, "Load a file with blendshapes from a cereal::BinaryInputArchive (.bin) from the harddisk.", py::arg("filename"));
 
     morphablemodel_module.def("draw_sample", [](const morphablemodel::MorphableModel& morphable_model, const std::vector<morphablemodel::Blendshape>& blendshapes, const std::vector<float>& shape_coefficients, const std::vector<float>& blendshape_coefficients, const std::vector<float>& color_coefficients) {
-            // Helper function - draws a sample with given shape, blendshape and colour coeffs, and
+            // Helper function - draws a sample with given shape, blendshape and colour coefficients, and
             // returns a mesh. This is quite useful and would be worth having in the C++ API too.
-            // If no color coeffs are given, then the resulting mesh won't have color information (that's the behaviour of sample_to_mesh when given '{}').
-            // assert all vectors > 0?
+            // If no colour coefficients are given, the resulting mesh won't have colour information.
             // Add expressions if both blendshapes and coefficients are given, otherwise just use the PCA model sample:
-            cv::Mat shape;
+            Eigen::VectorXf shape;
             if (blendshape_coefficients.size() > 0 && blendshapes.size() > 0)
             {
-                shape = morphable_model.get_shape_model().draw_sample(shape_coefficients) + morphablemodel::to_matrix(blendshapes) * cv::Mat(blendshape_coefficients);
+                shape = morphable_model.get_shape_model().draw_sample(shape_coefficients) + morphablemodel::to_matrix(blendshapes) * Eigen::Map<const Eigen::VectorXf>(blendshape_coefficients.data(), blendshape_coefficients.size());
             }
             else {
                 shape = morphable_model.get_shape_model().draw_sample(shape_coefficients);
             }
             // Draw sample from colour model if color_coefficients given, otherwise set to empty:
-            const cv::Mat albedo = color_coefficients.size() > 0 ? morphable_model.get_color_model().draw_sample(color_coefficients) : cv::Mat();
+            const Eigen::VectorXf albedo = color_coefficients.size() > 0 ? morphable_model.get_color_model().draw_sample(color_coefficients) : Eigen::VectorXf();
             return morphablemodel::sample_to_mesh(shape, albedo, morphable_model.get_shape_model().get_triangle_list(), {}, morphable_model.get_texture_coordinates());
         }, "Draws a sample with given shape, blendshape and colour coeffs, and returns a mesh.", py::arg("morphable_model"), py::arg("blendshapes"), py::arg("shape_coefficients"), py::arg("blendshape_coefficients"), py::arg("color_coefficients"));
 
@@ -222,7 +238,7 @@ PYBIND11_PLUGIN(eos) {
 		;
 
 	py::class_<fitting::ContourLandmarks>(fitting_module, "ContourLandmarks", "Defines which 2D landmarks comprise the right and left face contour.")
-		.def_static("load", &fitting::ContourLandmarks::load, "Helper method to load contour landmarks from a text file with landmark mappings, like ibug2did.txt.", py::arg("filename"))
+		.def_static("load", &fitting::ContourLandmarks::load, "Helper method to load contour landmarks from a text file with landmark mappings, like ibug_to_sfm.txt.", py::arg("filename"))
 		;
 
 	py::class_<fitting::ModelContour>(fitting_module, "ModelContour", "Definition of the vertex indices that define the right and left model contour.")
