@@ -1,22 +1,22 @@
 /*
- * eos - A 3D Morphable Model fitting library written in modern C++11/14.
- *
- * File: examples/fit-model-simple.cpp
- *
- * Copyright 2015 Patrik Huber
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+* eos - A 3D Morphable Model fitting library written in modern C++11/14.
+*
+* File: examples/fit-model-simple.cpp
+*
+* Copyright 2015 Patrik Huber
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+* http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
 #include "eos/core/Landmark.hpp"
 #include "eos/core/LandmarkMapper.hpp"
 #include "eos/fitting/orthographic_camera_estimation_linear.hpp"
@@ -50,12 +50,12 @@ using std::vector;
 using std::string;
 
 /**
- * Reads an ibug .pts landmark file and returns an ordered vector with
- * the 68 2D landmark coordinates.
- *
- * @param[in] filename Path to a .pts file.
- * @return An ordered vector with the 68 ibug landmarks.
- */
+* Reads an ibug .pts landmark file and returns an ordered vector with
+* the 68 2D landmark coordinates.
+*
+* @param[in] filename Path to a .pts file.
+* @return An ordered vector with the 68 ibug landmarks.
+*/
 LandmarkCollection<cv::Vec2f> read_pts_landmarks(std::string filename)
 {
 	using std::getline;
@@ -101,14 +101,14 @@ LandmarkCollection<cv::Vec2f> read_pts_landmarks(std::string filename)
 };
 
 /**
- * This app demonstrates estimation of the camera and fitting of the shape
- * model of a 3D Morphable Model from an ibug LFPW image with its landmarks.
- *
- * First, the 68 ibug landmarks are loaded from the .pts file and converted
- * to vertex indices using the LandmarkMapper. Then, an orthographic camera
- * is estimated, and then, using this camera matrix, the shape is fitted
- * to the landmarks.
- */
+* This app demonstrates estimation of the camera and fitting of the shape
+* model of a 3D Morphable Model from an ibug LFPW image with its landmarks.
+*
+* First, the 68 ibug landmarks are loaded from the .pts file and converted
+* to vertex indices using the LandmarkMapper. Then, an orthographic camera
+* is estimated, and then, using this camera matrix, the shape is fitted
+* to the landmarks.
+*/
 int main(int argc, char *argv[])
 {
 	fs::path modelfile, isomapfile, imagefile, landmarksfile, mappingsfile, outputfile;
@@ -117,16 +117,16 @@ int main(int argc, char *argv[])
 		desc.add_options()
 			("help,h",
 				"display the help message")
-			("model,m", po::value<fs::path>(&modelfile)->required()->default_value("../share/sfm_shape_3448.bin"),
-				"a Morphable Model stored as cereal BinaryArchive")
-			("image,i", po::value<fs::path>(&imagefile)->required()->default_value("data/image_0010.png"),
-				"an input image")
-			("landmarks,l", po::value<fs::path>(&landmarksfile)->required()->default_value("data/image_0010.pts"),
-				"2D landmarks for the image, in ibug .pts format")
-			("mapping,p", po::value<fs::path>(&mappingsfile)->required()->default_value("../share/ibug_to_sfm.txt"),
-				"landmark identifier to model vertex number mapping")
-			("output,o", po::value<fs::path>(&outputfile)->required()->default_value("out"),
-				"basename for the output rendering and obj files")
+				("model,m", po::value<fs::path>(&modelfile)->required()->default_value("../share/sfm_shape_3448.bin"),
+					"a Morphable Model stored as cereal BinaryArchive")
+					("image,i", po::value<fs::path>(&imagefile)->required()->default_value("data/image_0010.png"),
+						"an input image")
+						("landmarks,l", po::value<fs::path>(&landmarksfile)->required()->default_value("data/image_0010.pts"),
+							"2D landmarks for the image, in ibug .pts format")
+							("mapping,p", po::value<fs::path>(&mappingsfile)->required()->default_value("../share/ibug_to_sfm.txt"),
+								"landmark identifier to model vertex number mapping")
+								("output,o", po::value<fs::path>(&outputfile)->required()->default_value("out"),
+									"basename for the output rendering and obj files")
 			;
 		po::variables_map vm;
 		po::store(po::command_line_parser(argc, argv).options(desc).run(), vm);
@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
 	vector<int> vertex_indices; // their vertex indices
 	vector<Vec2f> image_points; // the corresponding 2D landmark points
 
-	// Sub-select all the landmarks which we have a mapping for (i.e. that are defined in the 3DMM):
+								// Sub-select all the landmarks which we have a mapping for (i.e. that are defined in the 3DMM):
 	for (int i = 0; i < landmarks.size(); ++i) {
 		auto converted_name = landmark_mapper.convert(landmarks[i].name);
 		if (!converted_name) { // no mapping defined for the current landmark
@@ -197,18 +197,7 @@ int main(int argc, char *argv[])
 
 	// Estimate the shape coefficients by fitting the shape to the landmarks:
 	Mat affine_from_ortho = fitting::get_3x4_affine_camera_matrix(rendering_params, image.cols, image.rows);
-	
-	vector<Mat> cameras;
-	cameras.push_back(affine_from_ortho);
-	//cameras.push_back(affine_from_ortho);
-	vector<vector<Vec2f>> landmarkss;
-	landmarkss.push_back(image_points);
-	//landmarkss.push_back(image_points);
-	vector<vector<int>> vertex_indicess;
-	vertex_indicess.push_back(vertex_indices);
-	//vertex_indicess.push_back(vertex_indices);
-	
-	vector<float> fitted_coeffs = fitting::fit_shape_to_landmarks_linear(morphable_model, cameras, landmarkss, vertex_indicess);
+	vector<float> fitted_coeffs = fitting::fit_shape_to_landmarks_linear(morphable_model, affine_from_ortho, image_points, vertex_indices);
 
 	// Obtain the full mesh with the estimated coefficients:
 	core::Mesh mesh = morphable_model.draw_sample(fitted_coeffs, vector<float>());

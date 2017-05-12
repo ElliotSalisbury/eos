@@ -1,22 +1,22 @@
 /*
- * eos - A 3D Morphable Model fitting library written in modern C++11/14.
- *
- * File: examples/fit-model.cpp
- *
- * Copyright 2016 Patrik Huber
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+* eos - A 3D Morphable Model fitting library written in modern C++11/14.
+*
+* File: examples/fit-model.cpp
+*
+* Copyright 2016 Patrik Huber
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+* http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
 #include "eos/core/Landmark.hpp"
 #include "eos/core/LandmarkMapper.hpp"
 #include "eos/morphablemodel/MorphableModel.hpp"
@@ -50,12 +50,12 @@ using std::vector;
 using std::string;
 
 /**
- * Reads an ibug .pts landmark file and returns an ordered vector with
- * the 68 2D landmark coordinates.
- *
- * @param[in] filename Path to a .pts file.
- * @return An ordered vector with the 68 ibug landmarks.
- */
+* Reads an ibug .pts landmark file and returns an ordered vector with
+* the 68 2D landmark coordinates.
+*
+* @param[in] filename Path to a .pts file.
+* @return An ordered vector with the 68 ibug landmarks.
+*/
 LandmarkCollection<cv::Vec2f> read_pts_landmarks(std::string filename)
 {
 	using std::getline;
@@ -101,17 +101,17 @@ LandmarkCollection<cv::Vec2f> read_pts_landmarks(std::string filename)
 };
 
 /**
- * Draws the given mesh as wireframe into the image.
- *
- * It does backface culling, i.e. draws only vertices in CCW order.
- *
- * @param[in] image An image to draw into.
- * @param[in] mesh The mesh to draw.
- * @param[in] modelview Model-view matrix to draw the mesh.
- * @param[in] projection Projection matrix to draw the mesh.
- * @param[in] viewport Viewport to draw the mesh.
- * @param[in] colour Colour of the mesh to be drawn.
- */
+* Draws the given mesh as wireframe into the image.
+*
+* It does backface culling, i.e. draws only vertices in CCW order.
+*
+* @param[in] image An image to draw into.
+* @param[in] mesh The mesh to draw.
+* @param[in] modelview Model-view matrix to draw the mesh.
+* @param[in] projection Projection matrix to draw the mesh.
+* @param[in] viewport Viewport to draw the mesh.
+* @param[in] colour Colour of the mesh to be drawn.
+*/
 void draw_wireframe(cv::Mat image, const core::Mesh& mesh, glm::mat4x4 modelview, glm::mat4x4 projection, glm::vec4 viewport, cv::Scalar colour = cv::Scalar(0, 255, 0, 255))
 {
 	for (const auto& triangle : mesh.tvi)
@@ -129,14 +129,14 @@ void draw_wireframe(cv::Mat image, const core::Mesh& mesh, glm::mat4x4 modelview
 };
 
 /**
- * This app demonstrates estimation of the camera and fitting of the shape
- * model of a 3D Morphable Model from an ibug LFPW image with its landmarks.
- * In addition to fit-model-simple, this example uses blendshapes, contour-
- * fitting, and can iterate the fitting.
- *
- * 68 ibug landmarks are loaded from the .pts file and converted
- * to vertex indices using the LandmarkMapper.
- */
+* This app demonstrates estimation of the camera and fitting of the shape
+* model of a 3D Morphable Model from an ibug LFPW image with its landmarks.
+* In addition to fit-model-simple, this example uses blendshapes, contour-
+* fitting, and can iterate the fitting.
+*
+* 68 ibug landmarks are loaded from the .pts file and converted
+* to vertex indices using the LandmarkMapper.
+*/
 int main(int argc, char *argv[])
 {
 	fs::path modelfile, isomapfile, imagefile, landmarksfile, mappingsfile, contourfile, edgetopologyfile, blendshapesfile, outputfile;
@@ -145,22 +145,22 @@ int main(int argc, char *argv[])
 		desc.add_options()
 			("help,h",
 				"display the help message")
-			("model,m", po::value<fs::path>(&modelfile)->required()->default_value("../share/sfm_shape_3448.bin"),
-				"a Morphable Model stored as cereal BinaryArchive")
-			("image,i", po::value<fs::path>(&imagefile)->required()->default_value("data/image_0010.png"),
-				"an input image")
-			("landmarks,l", po::value<fs::path>(&landmarksfile)->required()->default_value("data/image_0010.pts"),
-				"2D landmarks for the image, in ibug .pts format")
-			("mapping,p", po::value<fs::path>(&mappingsfile)->required()->default_value("../share/ibug_to_sfm.txt"),
-				"landmark identifier to model vertex number mapping")
-			("model-contour,c", po::value<fs::path>(&contourfile)->required()->default_value("../share/model_contours.json"),
-				"file with model contour indices")
-			("edge-topology,e", po::value<fs::path>(&edgetopologyfile)->required()->default_value("../share/sfm_3448_edge_topology.json"),
-				"file with model's precomputed edge topology")
-			("blendshapes,b", po::value<fs::path>(&blendshapesfile)->required()->default_value("../share/expression_blendshapes_3448.bin"),
-				"file with blendshapes")
-			("output,o", po::value<fs::path>(&outputfile)->required()->default_value("out"),
-				"basename for the output rendering and obj files")
+				("model,m", po::value<fs::path>(&modelfile)->required()->default_value("../share/sfm_shape_3448.bin"),
+					"a Morphable Model stored as cereal BinaryArchive")
+					("image,i", po::value<fs::path>(&imagefile)->required()->default_value("data/image_0010.png"),
+						"an input image")
+						("landmarks,l", po::value<fs::path>(&landmarksfile)->required()->default_value("data/image_0010.pts"),
+							"2D landmarks for the image, in ibug .pts format")
+							("mapping,p", po::value<fs::path>(&mappingsfile)->required()->default_value("../share/ibug_to_sfm.txt"),
+								"landmark identifier to model vertex number mapping")
+								("model-contour,c", po::value<fs::path>(&contourfile)->required()->default_value("../share/model_contours.json"),
+									"file with model contour indices")
+									("edge-topology,e", po::value<fs::path>(&edgetopologyfile)->required()->default_value("../share/sfm_3448_edge_topology.json"),
+										"file with model's precomputed edge topology")
+										("blendshapes,b", po::value<fs::path>(&blendshapesfile)->required()->default_value("../share/expression_blendshapes_3448.bin"),
+											"file with blendshapes")
+											("output,o", po::value<fs::path>(&outputfile)->required()->default_value("out"),
+												"basename for the output rendering and obj files")
 			;
 		po::variables_map vm;
 		po::store(po::command_line_parser(argc, argv).options(desc).run(), vm);
@@ -215,29 +215,26 @@ int main(int argc, char *argv[])
 	}
 
 	// Fit the model, get back a mesh and the pose:
-	vector<LandmarkCollection<Vec2f>> landmarkss({ landmarks, landmarks });
-	vector<int> image_ws({ image.cols, image.cols });
-	vector<int> image_hs({ image.rows, image.rows });
-	vector<core::Mesh> meshs;
-	vector<fitting::RenderingParameters> rendering_paramss;
-	std::tie(meshs, rendering_paramss) = fitting::fit_shape_and_pose(morphable_model, blendshapes, landmarkss, landmark_mapper, image_ws, image_hs, edge_topology, ibug_contour, model_contour, 50, boost::none, 30.0f);
+	core::Mesh mesh;
+	fitting::RenderingParameters rendering_params;
+	std::tie(mesh, rendering_params) = fitting::fit_shape_and_pose(morphable_model, blendshapes, landmarks, landmark_mapper, image.cols, image.rows, edge_topology, ibug_contour, model_contour, 50, boost::none, 30.0f);
 
 	// The 3D head pose can be recovered as follows:
-	float yaw_angle = glm::degrees(glm::yaw(rendering_paramss[0].get_rotation()));
+	float yaw_angle = glm::degrees(glm::yaw(rendering_params.get_rotation()));
 	// and similarly for pitch and roll.
 
 	// Extract the texture from the image using given mesh and camera parameters:
-	Mat affine_from_ortho = fitting::get_3x4_affine_camera_matrix(rendering_paramss[0], image.cols, image.rows);
-	Mat isomap = render::extract_texture(meshs[0], affine_from_ortho, image);
+	Mat affine_from_ortho = fitting::get_3x4_affine_camera_matrix(rendering_params, image.cols, image.rows);
+	Mat isomap = render::extract_texture(mesh, affine_from_ortho, image);
 
 	// Draw the fitted mesh as wireframe, and save the image:
-	draw_wireframe(outimg, meshs[0], rendering_paramss[0].get_modelview(), rendering_paramss[0].get_projection(), fitting::get_opencv_viewport(image.cols, image.rows));
+	draw_wireframe(outimg, mesh, rendering_params.get_modelview(), rendering_params.get_projection(), fitting::get_opencv_viewport(image.cols, image.rows));
 	outputfile += fs::path(".png");
 	cv::imwrite(outputfile.string(), outimg);
 
 	// Save the mesh as textured obj:
 	outputfile.replace_extension(".obj");
-	core::write_textured_obj(meshs[0], outputfile.string());
+	core::write_textured_obj(mesh, outputfile.string());
 
 	// And save the isomap:
 	outputfile.replace_extension(".isomap.png");
