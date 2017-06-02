@@ -4,16 +4,18 @@
 landmarkMappings ; A mapping from input landmarks (ibug, lhs) to output landmarks (SFM, rhs)
 {
               ; 1 to 8 are the right contour landmarks
-              ; chin bottom (2.1, MPEG point not marked in the BFM)
+     9  43783 ; chin bottom (2.1, MPEG point not marked in the BFM)
               ; 10 to 17 are the left contour landmarks
-    18  38792 ; right eyebrow outer-corner (4.6)
-    20  40087 ; right eyebrow middle, vertical middle (4.4, the MPEG point is on top of the brow though)
-    22  40514 ; right eyebrow inner-corner (4.2)
-    23  41091 ; left eyebrow inner-corner (4.1)
-    25  41511 ; left eyebrow middle (4.3, the MPEG point is on top of the brow though)
-    27  42825 ; left eyebrow outer-corner (4.5)
+    18  38057 ; right eyebrow outer-corner (4.6)
+    20  38530 ; right eyebrow middle, vertical middle (4.4, the MPEG point is on top of the brow though)
+    22  38775 ; right eyebrow inner-corner (4.2)
+    23  39320 ; left eyebrow inner-corner (4.1)
+    25  39581 ; left eyebrow middle (4.3, the MPEG point is on top of the brow though)
+    27  39949 ; left eyebrow outer-corner (4.5)
     31   8319 ; nose-tip (9.3)
+	32   6653 ; right nostril outer
     34   8334 ; nose-lip junction (9.15)
+	36   9878 ; left nostril outer
     37   2088 ; right eye outer-corner (3.12)
     40   5959 ; right eye inner-corner (3.8)
     43  10603 ; left eye inner-corner (3.11)

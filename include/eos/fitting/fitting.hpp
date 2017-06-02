@@ -45,6 +45,66 @@ namespace eos {
 	namespace fitting {
 
 /**
+* @brief Fit the pose (camera) to the landmarks.
+*
+* Convenience function that fits only the pose (camera).
+*
+*
+* @param[in] morphable_model The 3D Morphable Model used for the shape fitting.
+* @param[in] landmarks 2D landmarks from an image to fit the model to.
+* @param[in] landmark_mapper Mapping info from the 2D landmark points to 3D vertex indices.
+* @param[in] image_width Width of the input image (needed for the camera model).
+* @param[in] image_height Height of the input image (needed for the camera model).
+* @param[in,out] pca_shape_coefficients If given, will be used as initial PCA shape coefficients to start the fitting. Will contain the final estimated coefficients.
+* @return The pose.
+*/
+inline fitting::RenderingParameters fit_pose(const morphablemodel::MorphableModel& morphable_model, const std::vector<morphablemodel::Blendshape>& blendshapes, const core::LandmarkCollection<cv::Vec2f>& landmarks, const core::LandmarkMapper& landmark_mapper, int image_width, int image_height, std::vector<float>& pca_shape_coefficients, std::vector<float>& blendshape_coefficients)
+{
+	using std::vector;
+	using cv::Vec2f;
+	using cv::Vec4f;
+	using cv::Mat;
+	using Eigen::VectorXf;
+	using Eigen::MatrixXf;
+
+	// Current mesh - either from the given coefficients, or the mean:
+	VectorXf current_pca_shape = morphable_model.get_shape_model().draw_sample(pca_shape_coefficients);
+
+	if (!blendshapes.empty() && !blendshape_coefficients.empty()) {
+		MatrixXf blendshapes_as_basis = morphablemodel::to_matrix(blendshapes);
+		current_pca_shape = current_pca_shape + blendshapes_as_basis * Eigen::Map<const Eigen::VectorXf>(blendshape_coefficients.data(), blendshape_coefficients.size());
+	}
+
+	eos::core::Mesh current_mesh = morphablemodel::sample_to_mesh(current_pca_shape, morphable_model.get_color_model().get_mean(), morphable_model.get_shape_model().get_triangle_list(), morphable_model.get_color_model().get_triangle_list(), morphable_model.get_texture_coordinates());
+
+	// The 2D and 3D point correspondences used for the fitting:
+	vector<Vec4f> model_points;
+	vector<int> vertex_indices;
+	vector<Vec2f> image_points;
+
+	// Sub-select all the landmarks which we have a mapping for (i.e. that are defined in the 3DMM),
+	// and get the corresponding model points (mean if given no initial coeffs, from the computed shape otherwise):
+	for (int i = 0; i < landmarks.size(); ++i) {
+		auto converted_name = landmark_mapper.convert(landmarks[i].name);
+		if (!converted_name) { // no mapping defined for the current landmark
+			continue;
+		}
+		int vertex_idx = std::stoi(converted_name.get());
+		Vec4f vertex(current_mesh.vertices[vertex_idx].x, current_mesh.vertices[vertex_idx].y, current_mesh.vertices[vertex_idx].z, current_mesh.vertices[vertex_idx].w);
+		model_points.emplace_back(vertex);
+		vertex_indices.emplace_back(vertex_idx);
+		image_points.emplace_back(landmarks[i].coordinates);
+	}
+
+	// Need to do an initial pose fit to do the contour fitting inside the loop.
+	// We'll do an expression fit too, since face shapes vary quite a lot, depending on expressions.
+	fitting::ScaledOrthoProjectionParameters current_pose = fitting::estimate_orthographic_projection_linear(image_points, model_points, true, image_height);
+	fitting::RenderingParameters rendering_params(current_pose, image_width, image_height);
+
+	return rendering_params;
+};
+
+/**
  * Convenience function that fits the shape model and expression blendshapes to
  * landmarks. Makes the fitted PCA shape and blendshape coefficients accessible
  * via the out parameters \p pca_shape_coefficients and \p blendshape_coefficients.
